@@ -32,7 +32,7 @@
         <TextBox x:Name="txtLocalPort" Grid.Column="1" Margin="5,5,969,5" TextWrapping="Wrap" VerticalAlignment="Center" Padding="0" Height="30" VerticalContentAlignment="Center" Grid.Row="3"/>
         <Label x:Name="labRemotePort" Content="远程端口" Margin="164,5,854,5" Grid.Row="3" VerticalAlignment="Center" HorizontalContentAlignment="Right" Grid.Column="1" Height="26"/>
         <TextBox x:Name="txtRemotePort" Grid.Column="1" Margin="253,5,702,5" TextWrapping="Wrap" VerticalAlignment="Center" Padding="0" Height="30" VerticalContentAlignment="Center" Grid.Row="3"/>
-        <TextBox x:Name="txtCommand" HorizontalAlignment="Left" Margin="5,5,0,6" Grid.Row="4" TextWrapping="Wrap" VerticalAlignment="Center" Height="104" Width="1185" Grid.Column="1" Padding="5" ScrollViewer.CanContentScroll="True" Grid.ColumnSpan="2" AcceptsReturn="True"/>
+        <TextBox x:Name="txtCommand" HorizontalAlignment="Left" Margin="5,5,0,6" Grid.Row="4" TextWrapping="Wrap" VerticalAlignment="Center" Height="104" Width="1185" Grid.Column="1" Padding="5" ScrollViewer.CanContentScroll="True" Grid.ColumnSpan="2" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"/>
         <Label x:Name="labCommand" Content="配置命令行" Margin="5,5,5,86" Grid.Row="4" VerticalAlignment="Center" HorizontalContentAlignment="Center" Height="26" VerticalContentAlignment="Center"/>
         <Button x:Name="btnSave" Content="保存配置" HorizontalAlignment="Left" Margin="457,5,0,5" Grid.Row="3" VerticalAlignment="Center" Width="75" Grid.Column="1" Height="30" Click="btnSave_Click"/>
         <Button x:Name="btnStart" Content="启动Jetty" HorizontalAlignment="Left" Margin="550,5,0,5" Grid.Row="3" VerticalAlignment="Center" Width="75" Grid.Column="1" Height="30" Click="btnStart_Click"/>
@@ -43,8 +43,10 @@
         <Button x:Name="btnClearCommand" Content="清空" Margin="5,77,5,0" Grid.Row="4" VerticalAlignment="Top" Height="30" Click="btnClearCommand_Click"/>
         <Button x:Name="btnCopyResult" Content="复制" Margin="5,40,5,0" Grid.Row="5" VerticalAlignment="Top" Height="30" Click="btnCopyResult_Click" />
         <Button x:Name="btnClearResult" Content="清空" Margin="5,75,5,0" Grid.Row="5" VerticalAlignment="Top" Height="30" Click="btnClearResult_Click" />
-        <ScrollViewer Grid.Column="1" HorizontalAlignment="Left" Height="483" Margin="5,0,0,0" Grid.Row="5" VerticalAlignment="Top" Width="1185" Grid.ColumnSpan="2">
-            <TextBlock x:Name="txtResult" HorizontalAlignment="Left" TextWrapping="Wrap" VerticalAlignment="Top" Height="483" Width="1185" ScrollViewer.CanContentScroll="True"/>
+        <ScrollViewer x:Name="sv" Grid.Column="1" Height="483" Margin="5,0,0,0" Grid.Row="5" Width="1185" Grid.ColumnSpan="2" CanContentScroll="True" HorizontalScrollBarVisibility="Visible" VerticalScrollBarVisibility="Visible">
+            <ScrollViewer.Content>
+                <TextBlock x:Name="txtResult" HorizontalAlignment="Center" TextWrapping="Wrap" VerticalAlignment="Top" Width="1154" />
+            </ScrollViewer.Content>
         </ScrollViewer>
     </Grid>
 </Window>

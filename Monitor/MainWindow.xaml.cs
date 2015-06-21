@@ -1,23 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Forms;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace JettyMonitor
 {
@@ -103,176 +91,6 @@ namespace JettyMonitor
             }
         }
 
-        private void btnSave_Click(object sender, RoutedEventArgs e)
-        {
-            StreamWriter sw = null;
-            FileStream fileStream = null;
-            try
-            {
-                if (Validate())
-                {
-                    config.AppSettings.Settings["JavaHome"].Value = this.txtJavaHome.Text;
-                    config.AppSettings.Settings["JettyHome"].Value = this.txtJettyHome.Text;
-                    config.AppSettings.Settings["JettyBase"].Value = this.txtJettyBase.Text;
-                    config.AppSettings.Settings["LocalPort"].Value = this.txtLocalPort.Text;
-                    config.AppSettings.Settings["RemotePort"].Value = this.txtRemotePort.Text;
-
-                    if (string.IsNullOrWhiteSpace(config.AppSettings.Settings["Command"].Value))
-                    {
-                        StringBuilder sbCommand = new StringBuilder();
-                        if (string.IsNullOrWhiteSpace(this.txtRemotePort.Text))
-                        {
-                            sbCommand.AppendLine(@"cd /d " + this.txtJettyBase.Text);
-                            sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -jar " + this.txtJettyHome.Text + @"\start.jar --add-to-startd=http,deploy,spring,servlet,servlets,webapp,jsp,jstl,server");
-                            sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" " + this.txtJettyHome.Text + @"\start.jar jetty.http.port=" + this.txtLocalPort.Text);
-                        }
-                        else
-                        {
-                            sbCommand.AppendLine(@"cd /d " + this.txtJettyBase.Text);
-                            sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -jar " + this.txtJettyHome.Text + @"\start.jar --add-to-startd=http,deploy,spring,servlet,servlets,webapp,jsp,jstl,server");
-                            sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -Xdebug -agentlib:jdwp=transport=dt_socket,address=" + this.txtRemotePort.Text + ",server=y,suspend=n -jar " + this.txtJettyHome.Text + @"\start.jar jetty.http.port=" + this.txtLocalPort.Text);
-                        }
-
-                        this.txtCommand.Text = sbCommand.ToString();
-                        config.AppSettings.Settings["Command"].Value = sbCommand.ToString();
-                    }
-                    else
-                    {
-                        this.txtCommand.Text = config.AppSettings.Settings["Command"].Value;
-                    }
-                    
-                    config.Save();
-                    ConfigurationManager.RefreshSection("appSettings");
-
-                    fileStream = File.Create(AppDomain.CurrentDomain.BaseDirectory + @"\runjetty.bat");
-                    sw = new StreamWriter(fileStream);
-                    sw.Write(this.txtCommand.Text);
-
-                    sw.Flush();
-                }
-            }
-            catch (Exception ex)
-            {
-                this.labMessage.Content = ex.Message;
-            }
-            finally
-            {
-                if (fileStream != null)
-                {
-                    fileStream.Close();
-                }
-            }
-        }
-
-        private void btnStart_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                //if (string.IsNullOrWhiteSpace(this.txtCommand.Text))
-                //{
-                //    this.labMessage.Content = "请先保存配置！";
-                //    return;
-                //}
-                
-                this.txtResult.Text = "";
-
-                startProcess = new Process();
-                startProcess.StartInfo.FileName = @"cmd";
-                startProcess.StartInfo.Arguments = @"/c " + AppDomain.CurrentDomain.BaseDirectory + @"\runjetty.bat";
-                startProcess.StartInfo.UseShellExecute = false;
-                startProcess.StartInfo.CreateNoWindow = true;
-                startProcess.StartInfo.RedirectStandardOutput = true;
-                startProcess.StartInfo.RedirectStandardError = true;                
-                startProcess.OutputDataReceived += startProcess_OutputDataReceived;
-                startProcess.ErrorDataReceived += startProcess_ErrorDataReceived;
-                startProcess.Start();
-                startProcess.BeginOutputReadLine();
-                startProcess.BeginErrorReadLine();
-            }
-            catch (Exception ex)
-            {
-                this.labMessage.Content = ex.Message;
-            }
-        }
-
-        private void startProcess_ErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (!string.IsNullOrWhiteSpace(e.Data))
-            {
-                this.Dispatcher.Invoke(ReadErrOutput, new object[] { e.Data });
-            }
-        }
-
-        void startProcess_OutputDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (!string.IsNullOrWhiteSpace(e.Data))
-            {
-                this.Dispatcher.Invoke(ReadStdOutput, new object[] { e.Data });
-            }
-        }
-
-        private void ReadStdOutputAction(string result)
-        {
-            this.txtResult.Text += (result + "\r\n");
-        }
-
-        private void ReadErrOutputAction(string result)
-        {
-            this.txtResult.Text += (result + "\r\n");
-        }
-
-        private void btnStop_Click(object sender, RoutedEventArgs e)
-        {
-            Process stopProcess = new Process();
-            try
-            {
-                if (startProcess == null)
-                {
-                    this.labMessage.Content = "请先启动服务！";
-                }
-                else
-                {
-                    stopProcess.StartInfo.FileName = @"cmd";
-                    stopProcess.StartInfo.Arguments = "/c \"TASKKILL /F /PID " + startProcess.Id + " /T\"";
-                    stopProcess.StartInfo.UseShellExecute = false;
-                    stopProcess.StartInfo.CreateNoWindow = true;
-                    stopProcess.StartInfo.RedirectStandardOutput = true;
-                    stopProcess.StartInfo.RedirectStandardError = true;
-                    stopProcess.ErrorDataReceived += stopProcess_ErrorDataReceived;
-                    stopProcess.OutputDataReceived += stopProcess_OutputDataReceived;
-                    stopProcess.Start();
-                    stopProcess.BeginOutputReadLine();
-                    stopProcess.BeginErrorReadLine();
-                }
-            }
-            catch (Exception ex)
-            {
-                this.labMessage.Content = ex.Message;
-            }
-            finally
-            {
-                if (startProcess != null)
-                {
-                    startProcess.Close();
-                }
-
-                if (stopProcess != null)
-                {
-                    stopProcess.Close();
-                }
-            }
-        }
-
-        void stopProcess_OutputDataReceived(object sender, DataReceivedEventArgs e)
-        {
-
-        }
-
-        void stopProcess_ErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-
-        }
-
         private bool Validate()
         {
             if (!Directory.Exists(this.txtJavaHome.Text))
@@ -310,24 +128,216 @@ namespace JettyMonitor
             return true;
         }
 
+        private void ReadStdOutputAction(string result)
+        {
+            this.txtResult.Text += (result + "\r\n");
+            this.sv.ScrollToBottom();
+        }
+
+        private void ReadErrOutputAction(string result)
+        {
+            this.txtResult.Text += (result + "\r\n");
+            this.sv.ScrollToBottom();
+        }
+
+        private void btnSave_Click(object sender, RoutedEventArgs e)
+        {
+            StreamWriter sw = null;
+            FileStream fileStream = null;
+            try
+            {
+                if (Validate())
+                {
+                    config.AppSettings.Settings["JavaHome"].Value = this.txtJavaHome.Text;
+                    config.AppSettings.Settings["JettyHome"].Value = this.txtJettyHome.Text;
+                    config.AppSettings.Settings["JettyBase"].Value = this.txtJettyBase.Text;
+                    config.AppSettings.Settings["LocalPort"].Value = this.txtLocalPort.Text;
+                    config.AppSettings.Settings["RemotePort"].Value = this.txtRemotePort.Text;
+
+                    if (string.IsNullOrWhiteSpace(config.AppSettings.Settings["Command"].Value))
+                    {
+                        StringBuilder sbCommand = new StringBuilder();
+                        if (string.IsNullOrWhiteSpace(this.txtRemotePort.Text))
+                        {
+                            sbCommand.AppendLine(@"cd /d " + this.txtJettyBase.Text);
+                            sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -jar " + this.txtJettyHome.Text + @"\start.jar --add-to-startd=http,deploy,spring,servlet,servlets,webapp,jsp,jstl,server");
+                            sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" " + this.txtJettyHome.Text + @"\start.jar jetty.http.port=" + this.txtLocalPort.Text);
+                        }
+                        else
+                        {
+                            sbCommand.AppendLine(@"cd /d " + this.txtJettyBase.Text);
+                            sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -jar " + this.txtJettyHome.Text + @"\start.jar --add-to-startd=http,deploy,spring,servlet,servlets,webapp,jsp,jstl,server");
+                            sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -Xdebug -agentlib:jdwp=transport=dt_socket,address=" + this.txtRemotePort.Text + ",server=y,suspend=n -jar " + this.txtJettyHome.Text + @"\start.jar jetty.http.port=" + this.txtLocalPort.Text);
+                        }
+
+                        this.txtCommand.Text = sbCommand.ToString();
+                        config.AppSettings.Settings["Command"].Value = sbCommand.ToString();
+                    }
+                    else
+                    {
+                        this.txtCommand.Text = config.AppSettings.Settings["Command"].Value;
+                    }
+
+                    config.Save();
+                    ConfigurationManager.RefreshSection("appSettings");
+
+                    fileStream = File.Create(AppDomain.CurrentDomain.BaseDirectory + @"\runjetty.bat");
+                    sw = new StreamWriter(fileStream);
+                    sw.Write(this.txtCommand.Text);
+
+                    sw.Flush();
+                }
+            }
+            catch (Exception ex)
+            {
+                this.labMessage.Content = ex.Message;
+            }
+            finally
+            {
+                if (fileStream != null)
+                {
+                    fileStream.Close();
+                }
+            }
+        }
+
+        private void btnStart_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                //if (string.IsNullOrWhiteSpace(this.txtCommand.Text))
+                //{
+                //    this.labMessage.Content = "请先保存配置！";
+                //    return;
+                //}
+
+                this.txtResult.Text = "";
+
+                startProcess = new Process();
+                startProcess.StartInfo.FileName = @"cmd";
+                startProcess.StartInfo.Arguments = @"/c " + AppDomain.CurrentDomain.BaseDirectory + @"\runjetty.bat";
+                startProcess.StartInfo.UseShellExecute = false;
+                startProcess.StartInfo.CreateNoWindow = true;
+                startProcess.StartInfo.RedirectStandardOutput = true;
+                startProcess.StartInfo.RedirectStandardError = true;
+                startProcess.OutputDataReceived += startProcess_OutputDataReceived;
+                startProcess.ErrorDataReceived += startProcess_ErrorDataReceived;
+                startProcess.Start();
+                startProcess.BeginOutputReadLine();
+                startProcess.BeginErrorReadLine();
+            }
+            catch (Exception ex)
+            {
+                this.labMessage.Content = ex.Message;
+            }
+        }
+
+        private void startProcess_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(e.Data))
+            {
+                this.Dispatcher.Invoke(ReadErrOutput, new object[] { e.Data });
+            }
+        }
+
+        void startProcess_OutputDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(e.Data))
+            {
+                this.Dispatcher.Invoke(ReadStdOutput, new object[] { e.Data });
+            }
+        }
+
+        private void btnStop_Click(object sender, RoutedEventArgs e)
+        {
+            Process stopProcess = new Process();
+            try
+            {
+                if (startProcess == null)
+                {
+                    this.labMessage.Content = "请先启动服务！";
+                }
+                else
+                {
+                    this.txtResult.Text = "";
+
+                    stopProcess.StartInfo.FileName = @"cmd";
+                    stopProcess.StartInfo.Arguments = "/c \"TASKKILL /F /PID " + startProcess.Id + " /T\"";
+                    stopProcess.StartInfo.UseShellExecute = false;
+                    stopProcess.StartInfo.CreateNoWindow = true;
+                    stopProcess.StartInfo.RedirectStandardOutput = true;
+                    stopProcess.StartInfo.RedirectStandardError = true;
+                    stopProcess.ErrorDataReceived += stopProcess_ErrorDataReceived;
+                    stopProcess.OutputDataReceived += stopProcess_OutputDataReceived;
+                    stopProcess.Start();
+                    stopProcess.BeginOutputReadLine();
+                    stopProcess.BeginErrorReadLine();
+                }
+            }
+            catch (Exception ex)
+            {
+                this.labMessage.Content = ex.Message;
+            }
+            finally
+            {
+                if (startProcess != null)
+                {
+                    startProcess.Close();
+                }
+
+                if (stopProcess != null)
+                {
+                    stopProcess.Close();
+                }
+
+                this.labMessage.Content = "停止Jetty成功！";
+            }
+        }
+
+        void stopProcess_OutputDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(e.Data))
+            {
+                this.Dispatcher.Invoke(ReadStdOutput, new object[] { e.Data });
+            }
+        }
+
+        void stopProcess_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(e.Data))
+            {
+                this.Dispatcher.Invoke(ReadErrOutput, new object[] { e.Data });
+            }
+        }
+
         private void btnCopyCommand_Click(object sender, RoutedEventArgs e)
         {
+            System.Windows.DataObject dataObject = new System.Windows.DataObject();
+            dataObject.SetData(System.Windows.DataFormats.UnicodeText, this.txtCommand.Text);
+            System.Windows.Clipboard.SetDataObject(dataObject);
 
+            this.labMessage.Content = "配置命令行已成功复制！";
         }
 
         private void btnClearCommand_Click(object sender, RoutedEventArgs e)
         {
             this.txtCommand.Text = "";
+            this.labMessage.Content = "配置命令行已清空！";
         }
 
         private void btnCopyResult_Click(object sender, RoutedEventArgs e)
         {
+            System.Windows.DataObject dataObject = new System.Windows.DataObject();
+            dataObject.SetData(System.Windows.DataFormats.UnicodeText, this.txtResult.Text);
+            System.Windows.Clipboard.SetDataObject(dataObject);
 
+            this.labMessage.Content = "执行结果已成功复制！";
         }
 
         private void btnClearResult_Click(object sender, RoutedEventArgs e)
         {
             this.txtResult.Text = "";
+            this.labMessage.Content = "执行结果已清空！";
         }
     }
 }
