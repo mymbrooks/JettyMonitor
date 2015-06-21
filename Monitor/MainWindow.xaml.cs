@@ -41,22 +41,18 @@ namespace JettyMonitor
             ReadStdOutput += new DelReadStdOutput(ReadStdOutputAction);
             ReadErrOutput += new DelReadErrOutput(ReadErrOutputAction);
 
-            if (EnvironmentUtil.CheckSysEnvironmentNameExist("JAVA_HOME"))
+            if (string.IsNullOrWhiteSpace(config.AppSettings.Settings["JavaHome"].Value))
             {
-                this.txtJavaHome.Text = EnvironmentUtil.GetSysEnvironmentByName("JAVA_HOME");
+                if (EnvironmentUtil.CheckSysEnvironmentNameExist("JAVA_HOME"))
+                {
+                    this.txtJavaHome.Text = EnvironmentUtil.GetSysEnvironmentByName("JAVA_HOME");
+                }
+            }
+            else
+            {
+                this.txtJavaHome.Text = config.AppSettings.Settings["JavaHome"].Value;
             }
 
-            if (EnvironmentUtil.CheckSysEnvironmentNameExist("JETTY_HOME"))
-            {
-                this.txtJettyHome.Text = EnvironmentUtil.GetSysEnvironmentByName("JETTY_HOME");
-            }
-
-            if (EnvironmentUtil.CheckSysEnvironmentNameExist("JETTY_BASE"))
-            {
-                this.txtJettyHome.Text = EnvironmentUtil.GetSysEnvironmentByName("JETTY_BASE");
-            }
-
-            this.txtJavaHome.Text = config.AppSettings.Settings["JavaHome"].Value;
             this.txtJettyHome.Text = config.AppSettings.Settings["JettyHome"].Value;
             this.txtJettyBase.Text = config.AppSettings.Settings["JettyBase"].Value;
             this.txtLocalPort.Text = config.AppSettings.Settings["LocalPort"].Value;
@@ -154,28 +150,35 @@ namespace JettyMonitor
                     config.AppSettings.Settings["LocalPort"].Value = this.txtLocalPort.Text;
                     config.AppSettings.Settings["RemotePort"].Value = this.txtRemotePort.Text;
 
-                    if (string.IsNullOrWhiteSpace(config.AppSettings.Settings["Command"].Value))
+                    if (string.IsNullOrWhiteSpace(this.txtCommand.Text))
                     {
-                        StringBuilder sbCommand = new StringBuilder();
-                        if (string.IsNullOrWhiteSpace(this.txtRemotePort.Text))
+                        if (string.IsNullOrWhiteSpace(config.AppSettings.Settings["Command"].Value))
                         {
-                            sbCommand.AppendLine(@"cd /d " + this.txtJettyBase.Text);
-                            sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -jar " + this.txtJettyHome.Text + @"\start.jar --add-to-startd=http,deploy,spring,servlet,servlets,webapp,jsp,jstl,server");
-                            sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" " + this.txtJettyHome.Text + @"\start.jar jetty.http.port=" + this.txtLocalPort.Text);
+                            StringBuilder sbCommand = new StringBuilder();
+                            if (string.IsNullOrWhiteSpace(this.txtRemotePort.Text))
+                            {
+                                sbCommand.AppendLine(@"cd /d " + this.txtJettyBase.Text);
+                                sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -jar " + this.txtJettyHome.Text + @"\start.jar --add-to-startd=http,deploy,spring,servlet,servlets,webapp,jsp,jstl,server");
+                                sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" " + this.txtJettyHome.Text + @"\start.jar jetty.http.port=" + this.txtLocalPort.Text);
+                            }
+                            else
+                            {
+                                sbCommand.AppendLine(@"cd /d " + this.txtJettyBase.Text);
+                                sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -jar " + this.txtJettyHome.Text + @"\start.jar --add-to-startd=http,deploy,spring,servlet,servlets,webapp,jsp,jstl,server");
+                                sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -Xdebug -agentlib:jdwp=transport=dt_socket,address=" + this.txtRemotePort.Text + ",server=y,suspend=n -jar " + this.txtJettyHome.Text + @"\start.jar jetty.http.port=" + this.txtLocalPort.Text);
+                            }
+
+                            this.txtCommand.Text = sbCommand.ToString();
+                            config.AppSettings.Settings["Command"].Value = sbCommand.ToString();
                         }
                         else
                         {
-                            sbCommand.AppendLine(@"cd /d " + this.txtJettyBase.Text);
-                            sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -jar " + this.txtJettyHome.Text + @"\start.jar --add-to-startd=http,deploy,spring,servlet,servlets,webapp,jsp,jstl,server");
-                            sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -Xdebug -agentlib:jdwp=transport=dt_socket,address=" + this.txtRemotePort.Text + ",server=y,suspend=n -jar " + this.txtJettyHome.Text + @"\start.jar jetty.http.port=" + this.txtLocalPort.Text);
+                            this.txtCommand.Text = config.AppSettings.Settings["Command"].Value;
                         }
-
-                        this.txtCommand.Text = sbCommand.ToString();
-                        config.AppSettings.Settings["Command"].Value = sbCommand.ToString();
                     }
                     else
                     {
-                        this.txtCommand.Text = config.AppSettings.Settings["Command"].Value;
+                        config.AppSettings.Settings["Command"].Value = this.txtCommand.Text;
                     }
 
                     config.Save();
@@ -205,11 +208,11 @@ namespace JettyMonitor
         {
             try
             {
-                //if (string.IsNullOrWhiteSpace(this.txtCommand.Text))
-                //{
-                //    this.labMessage.Content = "请先保存配置！";
-                //    return;
-                //}
+                if (string.IsNullOrWhiteSpace(this.txtCommand.Text))
+                {
+                    this.labMessage.Content = "请先保存配置！";
+                    return;
+                }
 
                 this.txtResult.Text = "";
 
