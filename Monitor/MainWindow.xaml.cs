@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Configuration;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -18,6 +19,7 @@ namespace JettyMonitor
         private Regex reg;
         private Configuration config;
         private Process startProcess;
+        private NotifyIcon notifyIcon;
 
         public delegate void DelReadStdOutput(string result);
         public delegate void DelReadErrOutput(string result);
@@ -32,11 +34,40 @@ namespace JettyMonitor
             InitializeComponent();
         }
 
+        private void Window_Initialized(object sender, EventArgs e)
+        {
+            this.folder = new FolderBrowserDialog();
+            this.reg = new Regex(@"^\d+$");
+            this.config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            this.notifyIcon = new NotifyIcon();
+        }
+
+        private void Window_Loaded(object sender, RoutedEventArgs e)
+        {
+
+        }
+
         private void Window_ContentRendered(object sender, EventArgs e)
         {
-            folder = new FolderBrowserDialog();
-            reg = new Regex(@"^\d+$");
-            config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+            this.notifyIcon.Text = "JettyMonitor";
+            this.notifyIcon.Icon = new Icon("logo.ico");
+            this.notifyIcon.Visible = false;
+            this.notifyIcon.Click += notifyIcon_Click;
+
+            ContextMenu contextMenu = new System.Windows.Forms.ContextMenu();
+            MenuItem menuItemStart = new MenuItem("启动Jetty");
+            menuItemStart.Click += menuItemStart_Click;
+            contextMenu.MenuItems.Add(menuItemStart);
+
+            MenuItem menuItemStop = new MenuItem("停止Jetty");
+            menuItemStop.Click += menuItemStop_Click;
+            contextMenu.MenuItems.Add(menuItemStop);
+
+            MenuItem menuItemExit = new MenuItem("退出");
+            menuItemExit.Click += menuItemExit_Click;
+            contextMenu.MenuItems.Add(menuItemExit);
+
+            this.notifyIcon.ContextMenu = contextMenu;
 
             ReadStdOutput += new DelReadStdOutput(ReadStdOutputAction);
             ReadErrOutput += new DelReadErrOutput(ReadErrOutputAction);
@@ -58,6 +89,38 @@ namespace JettyMonitor
             this.txtLocalPort.Text = config.AppSettings.Settings["LocalPort"].Value;
             this.txtRemotePort.Text = config.AppSettings.Settings["RemotePort"].Value;
             this.txtCommand.Text = config.AppSettings.Settings["Command"].Value;
+        }
+
+        private void menuItemStart_Click(object sender, EventArgs e)
+        {
+            this.StartJetty();
+        }
+
+        void menuItemStop_Click(object sender, EventArgs e)
+        {
+            this.StopJetty();
+        }
+
+        void menuItemExit_Click(object sender, EventArgs e)
+        {
+            this.notifyIcon.Visible = true;
+            this.Close();
+        }
+
+        void notifyIcon_Click(object sender, EventArgs e)
+        {
+            if (this.WindowState == System.Windows.WindowState.Normal)
+            {
+                this.WindowState = System.Windows.WindowState.Minimized;
+                this.ShowInTaskbar = true;
+                this.notifyIcon.Visible = true;
+            }
+            else
+            {
+                this.WindowState = System.Windows.WindowState.Normal;
+                this.ShowInTaskbar = false;
+                this.notifyIcon.Visible = false;
+            }
         }
 
         private void btnJavaBrowser_Click(object sender, RoutedEventArgs e)
@@ -138,6 +201,88 @@ namespace JettyMonitor
 
         private void btnSave_Click(object sender, RoutedEventArgs e)
         {
+            this.SaveConfig(this.config);
+        }
+
+        private void btnStart_Click(object sender, RoutedEventArgs e)
+        {
+            this.StartJetty();
+        }
+
+        private void btnStop_Click(object sender, RoutedEventArgs e)
+        {
+            this.StopJetty();
+        }
+
+        private void startProcess_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(e.Data))
+            {
+                this.Dispatcher.Invoke(ReadErrOutput, new object[] { e.Data });
+            }
+        }
+
+        void startProcess_OutputDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(e.Data))
+            {
+                this.Dispatcher.Invoke(ReadStdOutput, new object[] { e.Data });
+            }
+        }
+
+        void stopProcess_OutputDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(e.Data))
+            {
+                this.Dispatcher.Invoke(ReadStdOutput, new object[] { e.Data });
+            }
+        }
+
+        void stopProcess_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(e.Data))
+            {
+                this.Dispatcher.Invoke(ReadErrOutput, new object[] { e.Data });
+            }
+        }
+
+        private void btnCopyCommand_Click(object sender, RoutedEventArgs e)
+        {
+            System.Windows.DataObject dataObject = new System.Windows.DataObject();
+            dataObject.SetData(System.Windows.DataFormats.UnicodeText, this.txtCommand.Text);
+            System.Windows.Clipboard.SetDataObject(dataObject);
+
+            this.labMessage.Content = "配置命令行已成功复制！";
+        }
+
+        private void btnClearCommand_Click(object sender, RoutedEventArgs e)
+        {
+            this.txtCommand.Text = "";
+            this.labMessage.Content = "配置命令行已清空！";
+        }
+
+        private void btnCopyResult_Click(object sender, RoutedEventArgs e)
+        {
+            System.Windows.DataObject dataObject = new System.Windows.DataObject();
+            dataObject.SetData(System.Windows.DataFormats.UnicodeText, this.txtResult.Text);
+            System.Windows.Clipboard.SetDataObject(dataObject);
+
+            this.labMessage.Content = "执行结果已成功复制！";
+        }
+
+        private void btnClearResult_Click(object sender, RoutedEventArgs e)
+        {
+            this.txtResult.Text = "";
+            this.labMessage.Content = "执行结果已清空！";
+        }
+
+        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+
+        }
+
+        private void SaveConfig(Configuration config)
+        {
             StreamWriter sw = null;
             FileStream fileStream = null;
             try
@@ -189,6 +334,7 @@ namespace JettyMonitor
                     sw.Write(this.txtCommand.Text);
 
                     sw.Flush();
+                    this.labMessage.Content = "保存配置成功！";
                 }
             }
             catch (Exception ex)
@@ -204,7 +350,7 @@ namespace JettyMonitor
             }
         }
 
-        private void btnStart_Click(object sender, RoutedEventArgs e)
+        private void StartJetty()
         {
             try
             {
@@ -213,6 +359,8 @@ namespace JettyMonitor
                     this.labMessage.Content = "请先保存配置！";
                     return;
                 }
+
+                this.SaveConfig(this.config);
 
                 this.txtResult.Text = "";
 
@@ -235,23 +383,7 @@ namespace JettyMonitor
             }
         }
 
-        private void startProcess_ErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (!string.IsNullOrWhiteSpace(e.Data))
-            {
-                this.Dispatcher.Invoke(ReadErrOutput, new object[] { e.Data });
-            }
-        }
-
-        void startProcess_OutputDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (!string.IsNullOrWhiteSpace(e.Data))
-            {
-                this.Dispatcher.Invoke(ReadStdOutput, new object[] { e.Data });
-            }
-        }
-
-        private void btnStop_Click(object sender, RoutedEventArgs e)
+        private void StopJetty()
         {
             Process stopProcess = new Process();
             try
@@ -275,6 +407,8 @@ namespace JettyMonitor
                     stopProcess.Start();
                     stopProcess.BeginOutputReadLine();
                     stopProcess.BeginErrorReadLine();
+
+                    this.labMessage.Content = "停止Jetty成功！";
                 }
             }
             catch (Exception ex)
@@ -292,55 +426,41 @@ namespace JettyMonitor
                 {
                     stopProcess.Close();
                 }
-
-                this.labMessage.Content = "停止Jetty成功！";
             }
         }
 
-        void stopProcess_OutputDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (!string.IsNullOrWhiteSpace(e.Data))
+        private bool Exit()
+        {            
+            if (System.Windows.MessageBox.Show("确定要退出吗？这将停止Jetty。", "退出确认", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == System.Windows.MessageBoxResult.Yes)
             {
-                this.Dispatcher.Invoke(ReadStdOutput, new object[] { e.Data });
+                this.StopJetty();
+                this.notifyIcon.Visible = false;
+                return true;
             }
-        }
-
-        void stopProcess_ErrorDataReceived(object sender, DataReceivedEventArgs e)
-        {
-            if (!string.IsNullOrWhiteSpace(e.Data))
+            else
             {
-                this.Dispatcher.Invoke(ReadErrOutput, new object[] { e.Data });
+                this.notifyIcon.Visible = true;
+                return false;
             }
         }
 
-        private void btnCopyCommand_Click(object sender, RoutedEventArgs e)
+        private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            System.Windows.DataObject dataObject = new System.Windows.DataObject();
-            dataObject.SetData(System.Windows.DataFormats.UnicodeText, this.txtCommand.Text);
-            System.Windows.Clipboard.SetDataObject(dataObject);
+            if (!this.notifyIcon.Visible && this.WindowState != System.Windows.WindowState.Minimized)
+            {
+                this.WindowState = System.Windows.WindowState.Minimized;
+                this.ShowInTaskbar = true;
+                this.notifyIcon.Visible = true;
 
-            this.labMessage.Content = "配置命令行已成功复制！";
-        }
-
-        private void btnClearCommand_Click(object sender, RoutedEventArgs e)
-        {
-            this.txtCommand.Text = "";
-            this.labMessage.Content = "配置命令行已清空！";
-        }
-
-        private void btnCopyResult_Click(object sender, RoutedEventArgs e)
-        {
-            System.Windows.DataObject dataObject = new System.Windows.DataObject();
-            dataObject.SetData(System.Windows.DataFormats.UnicodeText, this.txtResult.Text);
-            System.Windows.Clipboard.SetDataObject(dataObject);
-
-            this.labMessage.Content = "执行结果已成功复制！";
-        }
-
-        private void btnClearResult_Click(object sender, RoutedEventArgs e)
-        {
-            this.txtResult.Text = "";
-            this.labMessage.Content = "执行结果已清空！";
+                e.Cancel = true;
+            }
+            else
+            {
+                if (!this.Exit())
+                {
+                    e.Cancel = true;
+                }
+            }
         }
     }
 }
