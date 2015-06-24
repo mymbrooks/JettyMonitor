@@ -20,6 +20,7 @@ namespace JettyMonitor
         private Configuration config;
         private Process startProcess;
         private NotifyIcon notifyIcon;
+        private bool IsExit = false;
 
         public delegate void DelReadStdOutput(string result);
         public delegate void DelReadErrOutput(string result);
@@ -40,11 +41,6 @@ namespace JettyMonitor
             this.reg = new Regex(@"^\d+$");
             this.config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             this.notifyIcon = new NotifyIcon();
-        }
-
-        private void Window_Loaded(object sender, RoutedEventArgs e)
-        {
-
         }
 
         private void Window_ContentRendered(object sender, EventArgs e)
@@ -103,8 +99,14 @@ namespace JettyMonitor
 
         void menuItemExit_Click(object sender, EventArgs e)
         {
-            this.notifyIcon.Visible = true;
-            this.Close();
+            if (System.Windows.MessageBox.Show("确定要退出吗？这将停止Jetty。", "退出确认", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == System.Windows.MessageBoxResult.Yes)
+            {
+                this.StopJetty();
+                this.notifyIcon.Visible = false;
+                this.IsExit = true;
+
+                this.Close();
+            }            
         }
 
         void notifyIcon_Click(object sender, EventArgs e)
@@ -112,13 +114,13 @@ namespace JettyMonitor
             if (this.WindowState == System.Windows.WindowState.Normal)
             {
                 this.WindowState = System.Windows.WindowState.Minimized;
-                this.ShowInTaskbar = true;
+                this.ShowInTaskbar = false;
                 this.notifyIcon.Visible = true;
             }
             else
             {
                 this.WindowState = System.Windows.WindowState.Normal;
-                this.ShowInTaskbar = false;
+                this.ShowInTaskbar = true;
                 this.notifyIcon.Visible = false;
             }
         }
@@ -276,11 +278,6 @@ namespace JettyMonitor
             this.labMessage.Content = "执行结果已清空！";
         }
 
-        private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-
-        }
-
         private void SaveConfig(Configuration config)
         {
             StreamWriter sw = null;
@@ -429,37 +426,15 @@ namespace JettyMonitor
             }
         }
 
-        private bool Exit()
-        {            
-            if (System.Windows.MessageBox.Show("确定要退出吗？这将停止Jetty。", "退出确认", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == System.Windows.MessageBoxResult.Yes)
-            {
-                this.StopJetty();
-                this.notifyIcon.Visible = false;
-                return true;
-            }
-            else
-            {
-                this.notifyIcon.Visible = true;
-                return false;
-            }
-        }
-
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (!this.notifyIcon.Visible && this.WindowState != System.Windows.WindowState.Minimized)
+            if (!IsExit)
             {
                 this.WindowState = System.Windows.WindowState.Minimized;
-                this.ShowInTaskbar = true;
+                this.ShowInTaskbar = false;
                 this.notifyIcon.Visible = true;
 
                 e.Cancel = true;
-            }
-            else
-            {
-                if (!this.Exit())
-                {
-                    e.Cancel = true;
-                }
             }
         }
     }
