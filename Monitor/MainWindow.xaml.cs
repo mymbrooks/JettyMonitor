@@ -50,7 +50,7 @@ namespace JettyMonitor
             this.notifyIcon.Visible = false;
             this.notifyIcon.Click += notifyIcon_Click;
 
-            ContextMenu contextMenu = new System.Windows.Forms.ContextMenu();
+            ContextMenu contextMenu = new ContextMenu();
             MenuItem menuItemStart = new MenuItem("启动Jetty");
             menuItemStart.Click += menuItemStart_Click;
             contextMenu.MenuItems.Add(menuItemStart);
@@ -99,7 +99,7 @@ namespace JettyMonitor
 
         void menuItemExit_Click(object sender, EventArgs e)
         {
-            if (System.Windows.MessageBox.Show("确定要退出吗？这将停止Jetty。", "退出确认", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == System.Windows.MessageBoxResult.Yes)
+            if (System.Windows.MessageBox.Show("确定要退出吗？这将停止Jetty。", "退出确认", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes)
             {
                 this.StopJetty();
                 this.notifyIcon.Visible = false;
@@ -111,15 +111,15 @@ namespace JettyMonitor
 
         void notifyIcon_Click(object sender, EventArgs e)
         {
-            if (this.WindowState == System.Windows.WindowState.Normal)
+            if (this.WindowState == WindowState.Normal)
             {
-                this.WindowState = System.Windows.WindowState.Minimized;
+                this.WindowState = WindowState.Minimized;
                 this.ShowInTaskbar = false;
                 this.notifyIcon.Visible = true;
             }
             else
             {
-                this.WindowState = System.Windows.WindowState.Normal;
+                this.WindowState = WindowState.Normal;
                 this.ShowInTaskbar = true;
                 this.notifyIcon.Visible = false;
             }
@@ -307,7 +307,7 @@ namespace JettyMonitor
                             {
                                 sbCommand.AppendLine(@"cd /d " + this.txtJettyBase.Text);
                                 sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -jar " + this.txtJettyHome.Text + @"\start.jar --add-to-startd=http,deploy,spring,servlet,servlets,webapp,jsp,jstl,server");
-                                sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -Xdebug -agentlib:jdwp=transport=dt_socket,address=" + this.txtRemotePort.Text + ",server=y,suspend=n -jar " + this.txtJettyHome.Text + @"\start.jar jetty.http.port=" + this.txtLocalPort.Text);
+                                sbCommand.AppendLine("\"" + this.txtJavaHome.Text + "\\bin\\java.exe\" -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=" + this.txtRemotePort.Text + " -jar " + this.txtJettyHome.Text + @"\start.jar jetty.http.port=" + this.txtLocalPort.Text);
                             }
 
                             this.txtCommand.Text = sbCommand.ToString();
@@ -387,7 +387,7 @@ namespace JettyMonitor
             {
                 if (startProcess == null)
                 {
-                    this.labMessage.Content = "请先启动服务！";
+                    this.labMessage.Content = "请先启动Jetty！";
                 }
                 else
                 {
@@ -430,7 +430,7 @@ namespace JettyMonitor
         {
             if (!IsExit)
             {
-                this.WindowState = System.Windows.WindowState.Minimized;
+                this.WindowState = WindowState.Minimized;
                 this.ShowInTaskbar = false;
                 this.notifyIcon.Visible = true;
 
